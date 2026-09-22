@@ -1,0 +1,1481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Fade Room — Barber Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+/* ══════════════════════════════════════════════════════
+   DESIGN TOKENS — identical to landing page
+══════════════════════════════════════════════════════ */
+:root {
+  /* Light theme — extracted exactly from The Fade Room landing page (waitlist v10) */
+  --gold:#A9762E;--gold-light:#C79646;--gold-pale:#F1E4C8;--gold-dim:#7C5620;--gold-rgb:169,118,46;
+  --cream:#FAF7F0;--cream-2:#F1E9D6;--text-main:#221A0F;--text-sub:rgba(34,26,15,0.72);
+  --text-muted:rgba(34,26,15,0.45);--surface:#FFFFFF;--surface-2:#F1E4C8;
+  --border:rgba(169,118,46,0.22);--border-strong:rgba(169,118,46,0.48);
+  --radius:12px;--radius-lg:20px;
+  --shadow:0 22px 54px rgba(0,0,0,0.12),0 6px 16px rgba(0,0,0,0.06);
+  --shadow-card:0 8px 32px rgba(169,118,46,0.1),0 2px 8px rgba(0,0,0,0.06);
+
+  --arrived-bg:rgba(169,118,46,0.12);--arrived-text:#7C5620;--arrived-border:rgba(169,118,46,0.35);
+  --complete-bg:rgba(34,139,80,0.10);--complete-text:#1E6B3A;--complete-border:rgba(34,139,80,0.3);
+  --cancelled-bg:rgba(192,57,43,0.09);--cancelled-text:#922B21;--cancelled-border:rgba(192,57,43,0.25);
+  --leaved-bg:rgba(100,100,120,0.10);--leaved-text:#4A4A65;--leaved-border:rgba(100,100,120,0.25);
+}
+[data-theme="dark"] {
+  /* Dark theme — extracted exactly from The Fade Room landing page (waitlist v10) */
+  --gold:#C9A24B;--gold-light:#E3C077;--gold-pale:#2A2013;--gold-dim:#E3C077;--gold-rgb:201,162,75;
+  --cream:#0D0B08;--cream-2:#161209;--text-main:#F1E6CE;--text-sub:rgba(241,230,206,0.72);
+  --text-muted:rgba(241,230,206,0.45);--surface:#1B160E;--surface-2:#2A2013;
+  --border:rgba(201,162,75,0.16);--border-strong:rgba(201,162,75,0.4);
+  --shadow:0 22px 54px rgba(0,0,0,0.35),0 6px 16px rgba(0,0,0,0.18);
+  --shadow-card:0 8px 32px rgba(201,162,75,0.14),0 2px 8px rgba(0,0,0,0.2);
+
+  --arrived-bg:rgba(201,162,75,0.15);--arrived-text:#E3C077;--arrived-border:rgba(201,162,75,0.4);
+  --complete-bg:rgba(34,139,80,0.15);--complete-text:#4CAF82;--complete-border:rgba(34,139,80,0.35);
+  --cancelled-bg:rgba(192,57,43,0.15);--cancelled-text:#E07060;--cancelled-border:rgba(192,57,43,0.35);
+  --leaved-bg:rgba(140,140,160,0.12);--leaved-text:#9898B0;--leaved-border:rgba(140,140,160,0.3);
+}
+
+:root{
+  /* Fixed top-bar height, reused to offset the login screen and any full-viewport overlay */
+  --topbar-height:64px;
+}
+
+/* ── Adaptive logo (matches landing page logic) ── */
+.logo-img{display:block;object-fit:contain;}
+.logo-dark{display:block;}
+.logo-light{display:none;}
+[data-theme="dark"] .logo-dark{display:none;}
+[data-theme="dark"] .logo-light{display:block;}
+
+/* ══ RESET ══ */
+*{margin:0;padding:0;box-sizing:border-box;}
+body{
+  font-family:'DM Sans',sans-serif;
+  background:var(--cream);color:var(--text-main);
+  min-height:100vh;transition:background .3s,color .3s;overflow-x:hidden;
+}
+
+/* ══ TOP BAR ══ */
+.top-bar{
+  position:fixed;top:0;left:0;right:0;z-index:200;
+  display:flex;justify-content:space-between;align-items:center;
+  min-height:var(--topbar-height);box-sizing:border-box;
+  padding:12px 20px;
+  background:var(--surface);border-bottom:1px solid var(--border);
+  box-shadow:0 2px 16px rgba(0,0,0,0.04);
+}
+.top-bar-left{display:flex;align-items:center;gap:12px;}
+.top-bar-logo{
+  width:40px;height:40px;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--surface);flex-shrink:0;overflow:hidden;
+}
+.top-bar-logo .logo-img{width:100%;height:100%;}
+.top-bar-title{
+  font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:500;
+  color:var(--text-main);letter-spacing:-.3px;
+}
+.top-bar-title span{color:var(--gold);}
+.top-bar-right{display:flex;gap:8px;align-items:center;}
+.top-btn{
+  background:var(--surface);border:1px solid var(--border-strong);
+  border-radius:50px;padding:7px 14px;
+  font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;
+  color:var(--gold);cursor:pointer;
+  display:flex;align-items:center;gap:6px;
+  transition:all .2s;box-shadow:var(--shadow);letter-spacing:.5px;
+}
+.top-btn:hover{background:var(--gold-pale);}
+.top-btn.danger{color:#922B21;border-color:rgba(192,57,43,0.35);}
+.top-btn.danger:hover{background:rgba(192,57,43,0.08);}
+
+/* ══════════════════════════════════════════════════════
+   LOGIN SCREEN
+   Fixed overlay that starts right below the fixed top-bar
+   (never underneath/overlapping it) and centers the card,
+   both horizontally and vertically, within the remaining
+   viewport space on any screen size.
+══════════════════════════════════════════════════════ */
+#login-screen{
+  display:none;                 /* JS flips this to 'flex' on showLoginScreen() */
+  position:fixed;
+  top:var(--topbar-height);left:0;right:0;bottom:0;
+  min-height:calc(100vh - var(--topbar-height));
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  padding:32px 24px calc(32px + env(safe-area-inset-bottom,0px));
+  background:var(--cream);
+  z-index:100;                  /* below .top-bar (z-index:200) on purpose */
+  overflow-y:auto;              /* safety net on very short viewports */
+  box-sizing:border-box;
+}
+.login-card{
+  background:var(--surface);
+  border:1.5px solid var(--border);
+  border-radius:var(--radius-lg);
+  padding:48px 40px 40px;
+  width:100%;max-width:400px;
+  box-shadow:var(--shadow-card);
+  position:relative;
+  margin:auto;                  /* belt-and-braces centering inside the flex box */
+}
+.login-logo{
+  width:70px;height:70px;
+  display:flex;align-items:center;justify-content:center;
+  margin:0 auto 20px;background:var(--surface);overflow:hidden;
+}
+.login-logo .logo-img{width:100%;height:100%;}
+.login-tag{
+  font-size:10px;letter-spacing:4px;text-transform:uppercase;
+  color:var(--gold);font-weight:500;text-align:center;
+  display:block;margin-bottom:8px;
+}
+.login-title{
+  font-family:'Cormorant Garamond',serif;
+  font-size:30px;font-weight:300;
+  text-align:center;color:var(--text-main);
+  margin-bottom:8px;letter-spacing:-.3px;
+}
+.login-title em{font-style:italic;color:var(--gold);}
+.login-sub{
+  font-size:13px;color:var(--text-muted);
+  text-align:center;line-height:1.6;margin-bottom:32px;
+}
+.login-divider{
+  display:flex;align-items:center;gap:14px;
+  margin-bottom:28px;
+}
+.login-divider-line{flex:1;height:1px;background:var(--border);}
+.login-divider-dot{width:5px;height:5px;border-radius:50%;background:var(--gold);flex-shrink:0;}
+
+/* Login form fields */
+.form-group{margin-bottom:16px;}
+.form-group label{
+  display:block;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;
+  color:var(--text-muted);margin-bottom:7px;font-weight:500;
+}
+.form-group input{
+  width:100%;background:var(--surface-2);
+  border:1px solid var(--border);border-radius:var(--radius);
+  padding:14px 16px;font-size:15px;font-family:'DM Sans',sans-serif;
+  color:var(--text-main);transition:border-color .2s,box-shadow .2s;
+  outline:none;-webkit-appearance:none;
+}
+.form-group input::placeholder{color:var(--text-muted);}
+.form-group input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(var(--gold-rgb),.12);}
+
+.login-error{
+  font-size:13px;color:#922B21;
+  background:rgba(192,57,43,0.07);
+  border:1px solid rgba(192,57,43,0.2);
+  border-radius:var(--radius);padding:10px 14px;
+  margin-bottom:16px;display:none;
+}
+.btn-login{
+  width:100%;padding:16px 32px;border-radius:50px;
+  background:var(--gold);color:#1A1611;
+  font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;
+  letter-spacing:2px;text-transform:uppercase;
+  border:none;cursor:pointer;transition:all .2s;margin-top:8px;
+}
+.btn-login:hover{background:var(--gold-light);transform:translateY(-1px);box-shadow:0 8px 24px rgba(var(--gold-rgb),.35);}
+.btn-login:active{transform:translateY(0);}
+.btn-login:disabled{opacity:.6;cursor:not-allowed;transform:none;}
+
+/* Login theme controls (top-right corner) */
+.login-controls{
+  position:absolute;top:16px;right:16px;
+  display:flex;gap:6px;
+}
+
+
+/* ══════════════════════════════════════════════════════
+   DASHBOARD SCREEN
+══════════════════════════════════════════════════════ */
+#dashboard-screen{display:none;}
+.page{max-width:1100px;margin:0 auto;padding:80px 20px 60px;}
+
+/* Page header */
+.page-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:24px 0 20px;
+  border-bottom:1px solid var(--border);
+  margin-bottom:28px;flex-wrap:wrap;gap:12px;
+}
+.studio-tag{
+  font-size:10px;letter-spacing:4px;text-transform:uppercase;
+  color:var(--gold);font-weight:500;margin-bottom:6px;display:block;
+}
+.page-header h1{
+  font-family:'Cormorant Garamond',serif;
+  font-size:32px;font-weight:300;
+  color:var(--text-main);letter-spacing:-.3px;line-height:1.1;
+}
+.page-header h1 em{font-style:italic;color:var(--gold);}
+.header-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.live-badge{
+  display:flex;align-items:center;gap:7px;
+  font-size:11px;letter-spacing:1.5px;text-transform:uppercase;
+  color:var(--complete-text);font-weight:500;
+  background:var(--complete-bg);border:1px solid var(--complete-border);
+  border-radius:50px;padding:6px 14px;
+}
+.live-dot{
+  width:7px;height:7px;border-radius:50%;background:var(--complete-text);
+  animation:pulse 2s infinite;
+}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.6;transform:scale(1.3);}}
+
+/* Date badge */
+.date-badge{
+  font-size:11px;letter-spacing:.5px;color:var(--text-muted);
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:50px;padding:5px 13px;
+}
+
+/* Divider */
+.divider{display:flex;align-items:center;gap:14px;margin:0 0 28px;}
+.divider-line{flex:1;height:1px;background:var(--border);}
+.divider-dot{width:5px;height:5px;border-radius:50%;background:var(--gold);flex-shrink:0;}
+
+/* Summary cards */
+.summary-grid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+  gap:14px;margin-bottom:32px;
+}
+.summary-card{
+  background:var(--surface);border:1.5px solid var(--border);
+  border-radius:var(--radius-lg);padding:22px 22px 18px;
+  position:relative;overflow:hidden;
+  transition:transform .2s,box-shadow .2s;
+}
+.summary-card::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse at 0% 0%,rgba(var(--gold-rgb),.06) 0%,transparent 60%);
+  pointer-events:none;
+}
+.summary-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-card);}
+.summary-label{
+  font-size:10px;letter-spacing:2.5px;text-transform:uppercase;
+  color:var(--text-muted);font-weight:500;margin-bottom:10px;
+}
+.summary-value{
+  font-family:'Cormorant Garamond',serif;font-size:46px;font-weight:300;
+  color:var(--gold);line-height:1;margin-bottom:4px;
+}
+.summary-sub{font-size:12px;color:var(--text-muted);}
+.summary-card.highlight{border-color:var(--gold);background:var(--gold-pale);}
+
+/* Section label */
+.section-label{
+  font-size:10px;letter-spacing:3px;text-transform:uppercase;
+  color:var(--gold);font-weight:500;margin-bottom:16px;
+  display:flex;align-items:center;gap:10px;
+}
+.section-label::after{content:'';flex:1;height:1px;background:var(--border);}
+
+/* Top action bar */
+.action-bar{
+  display:flex;align-items:center;justify-content:space-between;
+  flex-wrap:wrap;gap:12px;margin-bottom:20px;
+}
+.view-tabs{
+  display:flex;gap:0;
+  background:var(--surface);border:1.5px solid var(--border);
+  border-radius:50px;padding:4px;width:fit-content;
+}
+.view-tab{
+  padding:9px 18px;border-radius:50px;
+  font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;
+  letter-spacing:.8px;text-transform:uppercase;
+  cursor:pointer;transition:all .22s cubic-bezier(.34,1.56,.64,1);
+  color:var(--text-muted);border:none;background:transparent;
+  display:flex;align-items:center;gap:7px;white-space:nowrap;
+}
+.view-tab.active{background:var(--gold);color:#1A1611;box-shadow:0 4px 14px rgba(var(--gold-rgb),.3);}
+.view-tab:not(.active):hover{color:var(--text-main);background:var(--gold-pale);}
+.tab-count{
+  background:rgba(var(--gold-rgb),.18);color:var(--gold-dim);
+  border-radius:50px;padding:1px 8px;font-size:11px;font-weight:500;
+  min-width:22px;text-align:center;
+}
+.view-tab.active .tab-count{background:rgba(26,22,17,.2);color:#1A1611;}
+
+/* Refresh btn */
+.btn-refresh{
+  display:inline-flex;align-items:center;gap:7px;
+  padding:9px 16px;border-radius:50px;
+  background:var(--surface);border:1px solid var(--border);
+  font-size:11px;letter-spacing:1px;text-transform:uppercase;font-weight:500;
+  color:var(--text-muted);cursor:pointer;transition:all .2s;
+  font-family:'DM Sans',sans-serif;
+}
+.btn-refresh:hover{border-color:var(--gold);color:var(--gold);}
+.btn-refresh svg{width:13px;height:13px;transition:transform .4s;}
+.btn-refresh.spinning svg{transform:rotate(360deg);}
+
+/* ══ CLIENT CARDS ══ */
+.client-list{display:flex;flex-direction:column;gap:12px;}
+.client-card{
+  background:var(--surface);border:1.5px solid var(--border);
+  border-radius:var(--radius-lg);padding:18px 20px;
+  display:grid;grid-template-columns:auto 1fr auto;
+  gap:16px;align-items:start;
+  transition:all .3s;position:relative;overflow:hidden;
+}
+.client-card::before{
+  content:'';position:absolute;left:0;top:0;bottom:0;width:3px;
+  background:var(--gold);border-radius:3px 0 0 3px;transition:background .3s;
+}
+.client-card[data-status="arrived"]::before{background:var(--gold);}
+.client-card[data-status="complete"]::before{background:var(--complete-text);}
+.client-card[data-status="cancelled"]::before{background:var(--cancelled-text);}
+.client-card[data-status="leaved"]::before{background:var(--leaved-text);}
+
+/* Reservation cards get a second golden accent strip on the right edge */
+.client-card[data-reservation="true"]{
+  border-color:rgba(var(--gold-rgb),0.40);
+  box-shadow:inset 3px 0 0 0 rgba(var(--gold-rgb),0),3px 0 0 0 rgba(var(--gold-rgb),0.45),var(--shadow);
+}
+.client-card[data-reservation="true"]::after{
+  content:'';position:absolute;right:0;top:0;bottom:0;width:3px;
+  background:linear-gradient(to bottom,rgba(var(--gold-rgb),0.6),rgba(var(--gold-rgb),0.2));
+  border-radius:0 3px 3px 0;
+}
+.client-card[data-status="complete"],
+.client-card[data-status="cancelled"],
+.client-card[data-status="leaved"]{opacity:.72;}
+.client-card[data-status="complete"]:hover,
+.client-card[data-status="cancelled"]:hover,
+.client-card[data-status="leaved"]:hover{opacity:1;}
+
+.queue-num{
+  font-family:'Cormorant Garamond',serif;
+  font-size:28px;font-weight:300;color:var(--text-muted);
+  line-height:1;min-width:32px;padding-top:2px;text-align:center;
+}
+.client-card[data-status="arrived"] .queue-num{color:var(--gold);}
+
+.client-info{}
+.client-name-row{
+  display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:6px;
+}
+.client-name{
+  font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:500;
+  color:var(--text-main);line-height:1.1;
+}
+.booking-badge{
+  display:inline-flex;align-items:center;gap:5px;
+  font-size:9px;letter-spacing:2px;text-transform:uppercase;
+  color:var(--gold);font-weight:600;
+  background:rgba(var(--gold-rgb),0.08);
+  border:1px solid rgba(var(--gold-rgb),0.55);
+  border-radius:50px;padding:3px 10px 3px 8px;flex-shrink:0;
+  box-shadow:0 0 0 1px rgba(var(--gold-rgb),0.10) inset,0 1px 6px rgba(var(--gold-rgb),0.12);
+  backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+  vertical-align:middle;
+  transition:background .2s,box-shadow .2s;
+}
+.booking-badge:hover{
+  background:rgba(var(--gold-rgb),0.14);
+  box-shadow:0 0 0 1px rgba(var(--gold-rgb),0.18) inset,0 2px 10px rgba(var(--gold-rgb),0.18);
+}
+[data-theme="dark"] .booking-badge{
+  background:rgba(var(--gold-rgb),0.10);
+  border-color:rgba(var(--gold-rgb),0.45);
+  box-shadow:0 0 0 1px rgba(var(--gold-rgb),0.08) inset,0 1px 8px rgba(var(--gold-rgb),0.15);
+}
+.booking-badge svg{width:10px;height:10px;flex-shrink:0;}
+.client-meta{
+  display:flex;flex-wrap:wrap;gap:12px;
+  font-size:13px;color:var(--text-sub);align-items:center;
+}
+.meta-item{display:flex;align-items:center;gap:5px;}
+.meta-item svg{width:13px;height:13px;color:var(--text-muted);flex-shrink:0;}
+.meta-label{
+  font-size:10px;letter-spacing:1.5px;text-transform:uppercase;
+  color:var(--text-muted);font-weight:500;margin-right:2px;
+}
+.service-pill{
+  display:inline-flex;align-items:center;gap:5px;
+  font-size:11px;letter-spacing:1px;text-transform:uppercase;
+  background:var(--cream-2);border:1px solid var(--border);
+  border-radius:50px;padding:3px 10px;color:var(--text-sub);font-weight:500;
+}
+.client-num-row{font-size:11px;color:var(--text-muted);font-weight:400;margin-top:4px;letter-spacing:.5px;}
+.client-barber-row{font-size:11px;color:var(--gold-dim);font-weight:500;margin-top:2px;letter-spacing:.5px;display:flex;align-items:center;gap:5px;}
+.client-barber-row svg{width:11px;height:11px;flex-shrink:0;color:var(--gold);}
+
+/* Actions column */
+.client-actions{
+  display:flex;flex-direction:column;align-items:flex-end;gap:10px;
+}
+.status-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:10px;letter-spacing:1.5px;text-transform:uppercase;font-weight:500;
+  border-radius:50px;padding:5px 12px;border:1px solid;white-space:nowrap;
+}
+.status-badge[data-s="arrived"]{background:var(--arrived-bg);color:var(--arrived-text);border-color:var(--arrived-border);}
+.status-badge[data-s="complete"]{background:var(--complete-bg);color:var(--complete-text);border-color:var(--complete-border);}
+.status-badge[data-s="cancelled"]{background:var(--cancelled-bg);color:var(--cancelled-text);border-color:var(--cancelled-border);}
+.status-badge[data-s="leaved"]{background:var(--leaved-bg);color:var(--leaved-text);border-color:var(--leaved-border);}
+.status-dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0;}
+
+.status-select{
+  appearance:none;background:var(--surface-2);
+  border:1px solid var(--border);border-radius:50px;
+  padding:7px 32px 7px 14px;
+  font-family:'DM Sans',sans-serif;font-size:11px;font-weight:500;
+  letter-spacing:.8px;text-transform:uppercase;color:var(--text-sub);
+  cursor:pointer;transition:all .2s;outline:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath d='M2 3.5L5 6.5L8 3.5' stroke='%239B8E78' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 12px center;
+  min-width:130px;
+}
+.status-select:hover{border-color:var(--gold);}
+.status-select:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(var(--gold-rgb),.12);}
+
+/* Quick-action chips */
+.quick-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;}
+.qa-chip{
+  padding:5px 12px;border-radius:50px;
+  font-size:10px;letter-spacing:1px;text-transform:uppercase;font-weight:500;
+  border:1px solid;cursor:pointer;transition:all .18s;background:transparent;
+  font-family:'DM Sans',sans-serif;
+}
+.qa-chip.complete{color:var(--complete-text);border-color:var(--complete-border);}
+.qa-chip.complete:hover{background:var(--complete-bg);}
+.qa-chip.cancelled{color:var(--cancelled-text);border-color:var(--cancelled-border);}
+.qa-chip.cancelled:hover{background:var(--cancelled-bg);}
+.qa-chip.leaved{color:var(--leaved-text);border-color:var(--leaved-border);}
+.qa-chip.leaved:hover{background:var(--leaved-bg);}
+.qa-chip.arrived{color:var(--arrived-text);border-color:var(--arrived-border);}
+.qa-chip.arrived:hover{background:var(--arrived-bg);}
+
+.time-ago{font-size:11px;color:var(--text-muted);white-space:nowrap;}
+
+/* Empty state */
+.empty-state{
+  text-align:center;padding:64px 24px;
+  border:1.5px dashed var(--border);border-radius:var(--radius-lg);
+}
+.empty-icon{
+  width:56px;height:56px;border-radius:50%;
+  border:1.5px solid var(--border);
+  display:inline-flex;align-items:center;justify-content:center;
+  margin-bottom:16px;background:var(--surface);
+}
+.empty-title{
+  font-family:'Cormorant Garamond',serif;
+  font-size:22px;font-weight:300;color:var(--text-muted);margin-bottom:6px;
+}
+.empty-sub{font-size:13px;color:var(--text-muted);}
+
+/* Loading overlay */
+#loading-overlay{
+  position:fixed;inset:0;z-index:300;
+  background:var(--cream);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:20px;transition:opacity .4s;
+}
+#loading-overlay.hidden{opacity:0;pointer-events:none;}
+.loading-logo{
+  width:56px;height:56px;border-radius:50%;
+  border:1.5px solid var(--gold);
+  display:flex;align-items:center;justify-content:center;
+  animation:breathe 2s ease-in-out infinite;overflow:hidden;
+}
+.loading-logo .logo-img{width:65%;height:65%;}
+@keyframes breathe{0%,100%{box-shadow:0 0 0 0 rgba(var(--gold-rgb),.4);}50%{box-shadow:0 0 0 10px rgba(var(--gold-rgb),0);}}
+.loading-text{font-size:12px;letter-spacing:3px;text-transform:uppercase;color:var(--text-muted);}
+
+/* Toast */
+.toast{
+  position:fixed;bottom:28px;left:50%;
+  transform:translateX(-50%) translateY(80px);
+  background:var(--surface);border:1.5px solid var(--gold);
+  border-radius:50px;padding:13px 26px;font-size:14px;
+  color:var(--text-main);box-shadow:0 8px 32px rgba(0,0,0,.12);
+  display:flex;align-items:center;gap:10px;
+  transition:transform .4s cubic-bezier(.34,1.56,.64,1),opacity .4s;
+  opacity:0;z-index:999;white-space:nowrap;max-width:90vw;
+}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1;}
+.toast-dot{width:7px;height:7px;border-radius:50%;background:var(--gold);flex-shrink:0;}
+
+/* ══ HISTORY DATE SELECTOR ══ */
+.history-nav{
+  display:flex;align-items:center;gap:10px;
+  margin-bottom:20px;flex-wrap:wrap;
+}
+.history-date-label{
+  font-size:11px;letter-spacing:1.5px;text-transform:uppercase;
+  color:var(--text-muted);font-weight:500;
+}
+.history-date-input{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:50px;padding:7px 16px;
+  font-family:'DM Sans',sans-serif;font-size:12px;
+  color:var(--text-main);cursor:pointer;outline:none;
+  transition:border-color .2s;
+}
+.history-date-input:focus{border-color:var(--gold);}
+
+/* ══ RESPONSIVE ══ */
+@media(max-width:640px){
+  .top-bar-title{font-size:15px;}
+  .page-header h1{font-size:24px;}
+  .summary-value{font-size:38px;}
+  .client-card{
+    grid-template-columns:auto 1fr;
+    grid-template-rows:auto auto;
+  }
+  .client-actions{
+    grid-column:1/-1;
+    flex-direction:row;flex-wrap:wrap;
+    align-items:center;justify-content:space-between;
+    border-top:1px solid var(--border);padding-top:12px;
+  }
+  .client-name{font-size:19px;}
+  .view-tabs{flex-wrap:nowrap;}
+  .view-tab{padding:8px 12px;font-size:11px;}
+  .page{padding:72px 14px 60px;}
+  .login-card{padding:36px 24px 28px;}
+  #login-screen{padding:24px 16px calc(24px + env(safe-area-inset-bottom,0px));}
+}
+@media(max-width:400px){
+  .summary-grid{grid-template-columns:1fr 1fr;}
+  .top-btn span.btn-label{display:none;}
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════
+     LOADING OVERLAY
+══════════════════════════════════════════════════ -->
+<div id="loading-overlay">
+  <div class="loading-logo">
+    <img src="assets/logo-dark.png" alt="The Fade Room" class="logo-img logo-dark">
+    <img src="assets/logo-light.png" alt="The Fade Room" class="logo-img logo-light">
+  </div>
+  <div class="loading-text">The Fade Room</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     TOP BAR (always visible for theme / lang toggle)
+══════════════════════════════════════════════════ -->
+<div class="top-bar">
+  <div class="top-bar-left">
+    <div class="top-bar-logo">
+      <img src="assets/logo-dark.png" alt="The Fade Room" class="logo-img logo-dark">
+      <img src="assets/logo-light.png" alt="The Fade Room" class="logo-img logo-light">
+    </div>
+    <div class="top-bar-title">The Fade Room &nbsp;<span id="db-label">Dashboard</span></div>
+  </div>
+  <div class="top-bar-right">
+    <button class="top-btn" onclick="toggleLang()">
+      <svg viewBox="0 0 16 16" fill="none" width="14" height="14"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.2"/><path d="M8 1.5C8 1.5 6 4 6 8C6 12 8 14.5 8 14.5M8 1.5C8 1.5 10 4 10 8C10 12 8 14.5 8 14.5M1.5 8H14.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+      <span id="lang-label" class="btn-label">ES</span>
+    </button>
+    <button class="top-btn" onclick="toggleTheme()">
+      <span id="theme-icon">☽</span>
+      <span id="theme-label" class="btn-label">Dark</span>
+    </button>
+    <!-- Logout: only shown when logged in -->
+    <button class="top-btn danger" id="logout-btn" style="display:none;" onclick="signOut()">
+      <svg viewBox="0 0 16 16" fill="none" width="14" height="14"><path d="M10 11L13 8L10 5M13 8H6M6 3H4C3.45 3 3 3.45 3 4V12C3 12.55 3.45 13 4 13H6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span class="btn-label" id="lbl-logout">Sign Out</span>
+    </button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     LOGIN SCREEN
+══════════════════════════════════════════════════ -->
+<div id="login-screen">
+  <div class="login-card">
+    <!-- Pequeños controles de tema dentro del card -->
+    <div class="login-logo">
+      <img src="assets/logo-dark.png" alt="The Fade Room" class="logo-img logo-dark">
+      <img src="assets/logo-light.png" alt="The Fade Room" class="logo-img logo-light">
+    </div>
+    <span class="login-tag" id="lbl-login-tag">The Fade Room</span>
+    <h2 class="login-title" id="lbl-login-title">Barber <em>Portal</em></h2>
+    <p class="login-sub" id="lbl-login-sub">Sign in to manage your waitlist in real time.</p>
+    <div class="login-divider"><div class="login-divider-line"></div><div class="login-divider-dot"></div><div class="login-divider-line"></div></div>
+
+    <form id="login-form" onsubmit="handleLogin(event)">
+      <div class="form-group">
+        <label id="lbl-email">Email</label>
+        <input type="email" id="login-email" autocomplete="email" placeholder="barber@thefaderoom.com" required>
+      </div>
+      <div class="form-group">
+        <label id="lbl-password">Password</label>
+        <input type="password" id="login-password" autocomplete="current-password" placeholder="••••••••" required>
+      </div>
+      <div id="login-error" class="login-error"></div>
+      <button type="submit" class="btn-login" id="login-btn">
+        <span id="lbl-login-btn">SIGN IN</span>
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     DASHBOARD SCREEN
+══════════════════════════════════════════════════ -->
+<div id="dashboard-screen">
+<div class="page">
+
+  <!-- Page header -->
+  <div class="page-header">
+    <div>
+      <span class="studio-tag" id="lbl-studio-tag">The Fade Room</span>
+      <h1 id="lbl-page-title">Waitlist <em>Dashboard</em></h1>
+    </div>
+    <div class="header-right">
+      <span class="date-badge" id="today-date"></span>
+      <div class="live-badge">
+        <span class="live-dot"></span>
+        <span id="lbl-live">Live</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Summary cards -->
+  <div class="summary-grid">
+    <div class="summary-card highlight">
+      <div class="summary-label" id="lbl-waiting">Waiting Now</div>
+      <div class="summary-value" id="count-arrived">—</div>
+      <div class="summary-sub" id="lbl-status-arrived">Status: Arrived</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-label" id="lbl-served">Served Today</div>
+      <div class="summary-value" id="count-complete">—</div>
+      <div class="summary-sub" id="lbl-status-complete">Status: Complete</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-label" id="lbl-total">Total Entries</div>
+      <div class="summary-value" id="count-total">—</div>
+      <div class="summary-sub" id="lbl-today">Today</div>
+    </div>
+  </div>
+
+  <div class="divider"><div class="divider-line"></div><div class="divider-dot"></div><div class="divider-line"></div></div>
+
+  <!-- Action bar -->
+  <div class="action-bar">
+    <div class="view-tabs">
+      <button class="view-tab active" id="vtab-active" onclick="switchView('active')">
+        <span id="lbl-tab-active">Waiting</span>
+        <span class="tab-count" id="badge-active">0</span>
+      </button>
+      <button class="view-tab" id="vtab-history" onclick="switchView('history')">
+        <span id="lbl-tab-history">History</span>
+        <span class="tab-count" id="badge-history">0</span>
+      </button>
+      <button class="view-tab" id="vtab-all" onclick="switchView('all')">
+        <span id="lbl-tab-all">All</span>
+        <span class="tab-count" id="badge-all">0</span>
+      </button>
+    </div>
+    <button class="btn-refresh" id="refresh-btn" onclick="refreshCounts()">
+      <svg viewBox="0 0 16 16" fill="none"><path d="M2 8C2 4.69 4.69 2 8 2C10.28 2 12.26 3.22 13.33 5M14 8C14 11.31 11.31 14 8 14C5.72 14 3.74 12.78 2.67 11" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><path d="M13 2V5H10" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span id="lbl-refresh">Refresh</span>
+    </button>
+  </div>
+
+  <!-- History date picker (shown only on history / all views) -->
+  <div class="history-nav" id="history-nav" style="display:none;">
+    <span class="history-date-label" id="lbl-viewing-date">Viewing date:</span>
+    <input type="date" class="history-date-input" id="history-date" onchange="onDateChange()">
+  </div>
+
+  <!-- Section label -->
+  <div class="section-label" id="lbl-queue-section">Queue — Ordered by Arrival</div>
+
+  <!-- Client list -->
+  <div class="client-list" id="client-list"></div>
+  <div class="empty-state" id="empty-state" style="display:none;">
+    <div class="empty-icon">
+      <svg viewBox="0 0 24 24" fill="none" width="22" height="22"><path d="M12 2C8.68 2 6 4.68 6 8C6 10.21 7.18 12.15 8.97 13.25C5.61 14.21 3 17.18 3 21H21C21 17.18 18.39 14.21 15.03 13.25C16.82 12.15 18 10.21 18 8C18 4.68 15.32 2 12 2Z" stroke="var(--gold)" stroke-width="1.2" stroke-linecap="round"/></svg>
+    </div>
+    <div class="empty-title" id="lbl-empty-title">No clients here</div>
+    <div class="empty-sub" id="lbl-empty-sub">The waitlist will appear here in real time.</div>
+  </div>
+
+</div><!-- /page -->
+</div><!-- /dashboard-screen -->
+
+<!-- Toast -->
+<div class="toast" id="toast"><div class="toast-dot"></div><span id="toast-msg"></span></div>
+
+<!-- ══════════════════════════════════════════════════
+     SUPABASE CDN
+══════════════════════════════════════════════════ -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+'use strict';
+
+/* ══════════════════════════════════════════════════
+   SUPABASE CONFIG — replace with your real credentials
+   Project Settings → API → Project URL & anon key
+══════════════════════════════════════════════════ */
+const SUPABASE_URL  = 'https://wrqccauqiingnfdczszs.supabase.co'; // ← replace
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndycWNjYXVxaWluZ25mZGN6c3pzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwNTAxNDEsImV4cCI6MjA5NjYyNjE0MX0.zWBdoBj-9aRhskqfE8XUuT1UC97APFC1ttAH1RV8rLE';                 // ← replace
+
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_ANON);
+
+/* ══════════════════════════════════════════════════
+   GLOBAL STATE
+══════════════════════════════════════════════════ */
+let isDark        = false;
+let isES          = false;
+let currentView   = 'active';
+let clientData    = [];       // today's waitlist cache
+let realtimeSub   = null;     // active Realtime channel
+let currentShopId = null;     // shop_id extracted from user metadata (multi-tenant)
+
+/* ══════════════════════════════════════════════════
+   TRANSLATIONS
+══════════════════════════════════════════════════ */
+const T = {
+  en: {
+    'db-label':            'Dashboard',
+    'lbl-page-title':      'Waitlist <em>Dashboard</em>',
+    'lbl-studio-tag':      'The Fade Room',
+    'lbl-live':            'Live',
+    'lbl-waiting':         'Waiting Now',
+    'lbl-served':          'Served Today',
+    'lbl-total':           'Total Entries',
+    'lbl-status-arrived':  'Status: Arrived',
+    'lbl-status-complete': 'Status: Complete',
+    'lbl-today':           'Today',
+    'lbl-tab-active':      'Waiting',
+    'lbl-tab-history':     'History',
+    'lbl-tab-all':         'All',
+    'lbl-queue-section':   'Queue — Ordered by Arrival',
+    'lbl-refresh':         'Refresh',
+    'lbl-empty-title':     'No clients here',
+    'lbl-empty-sub':       'The waitlist will appear here in real time.',
+    'lbl-viewing-date':    'Viewing date:',
+    'lbl-logout':          'Sign Out',
+    'lbl-login-tag':       'The Fade Room',
+    'lbl-login-title':     'Barber <em>Portal</em>',
+    'lbl-login-sub':       'Sign in to manage your waitlist in real time.',
+    'lbl-email':           'Email',
+    'lbl-password':        'Password',
+    'lbl-login-btn':       'SIGN IN',
+    'col-phone':           'Phone',
+    'col-registered':      'Registered at',
+    'badge-booking':       'Booking',
+    'st-arrived':          'Arrived',
+    'st-complete':         'Complete',
+    'st-cancelled':        'Cancelled',
+    'st-leaved':           'Left Early',
+    'act-complete':        'Done ✓',
+    'act-cancelled':       'Cancel',
+    'act-leaved':          'Left',
+    'act-arrived':         '↩ Re-activate',
+    'toast-changed':       'Status updated',
+    'toast-welcome':       '✓ Welcome back!',
+    'toast-signed-out':    'Session closed.',
+    'toast-new-client':    'joined the waitlist',
+    'toast-refreshed':     'Refreshed',
+    'lang-label':          'ES',
+    'theme-label':         'Dark',
+    'theme-label-dark':    'Light',
+    'err-credentials':     'Incorrect email or password.',
+    'err-login-generic':   'Login failed. Please try again.',
+    'err-login-empty':     'Please enter your email and password.',
+  },
+  es: {
+    'db-label':            'Panel',
+    'lbl-page-title':      'Lista de Espera <em>Dashboard</em>',
+    'lbl-studio-tag':      'The Fade Room',
+    'lbl-live':            'En Vivo',
+    'lbl-waiting':         'Esperando Ahora',
+    'lbl-served':          'Atendidos Hoy',
+    'lbl-total':           'Entradas Totales',
+    'lbl-status-arrived':  'Estado: Llegó',
+    'lbl-status-complete': 'Estado: Completado',
+    'lbl-today':           'Hoy',
+    'lbl-tab-active':      'Esperando',
+    'lbl-tab-history':     'Historial',
+    'lbl-tab-all':         'Todos',
+    'lbl-queue-section':   'Cola — Por Hora de Llegada',
+    'lbl-refresh':         'Actualizar',
+    'lbl-empty-title':     'Sin clientes aquí',
+    'lbl-empty-sub':       'La lista aparecerá aquí en tiempo real.',
+    'lbl-viewing-date':    'Viendo fecha:',
+    'lbl-logout':          'Cerrar Sesión',
+    'lbl-login-tag':       'The Fade Room',
+    'lbl-login-title':     'Portal de <em>Barberos</em>',
+    'lbl-login-sub':       'Inicia sesión para gestionar tu lista de espera.',
+    'lbl-email':           'Correo Electrónico',
+    'lbl-password':        'Contraseña',
+    'lbl-login-btn':       'ENTRAR',
+    'col-phone':           'Teléfono',
+    'col-registered':      'Registrado a las',
+    'badge-booking':       'Reserva',
+    'st-arrived':          'Llegó',
+    'st-complete':         'Completado',
+    'st-cancelled':        'Cancelado',
+    'st-leaved':           'Se Fue',
+    'act-complete':        'Listo ✓',
+    'act-cancelled':       'Cancelar',
+    'act-leaved':          'Se Fue',
+    'act-arrived':         '↩ Reactivar',
+    'toast-changed':       'Estado actualizado',
+    'toast-welcome':       '✓ Bienvenido de nuevo!',
+    'toast-signed-out':    'Sesión cerrada.',
+    'toast-new-client':    'se unió a la lista',
+    'toast-refreshed':     'Actualizado',
+    'lang-label':          'EN',
+    'theme-label':         'Oscuro',
+    'theme-label-dark':    'Claro',
+    'err-credentials':     'Correo o contraseña incorrectos.',
+    'err-login-generic':   'Error al iniciar sesión. Intenta de nuevo.',
+    'err-login-empty':     'Por favor ingresa tu correo y contraseña.',
+  }
+};
+function t(k){ return (isES ? T.es : T.en)[k] || k; }
+
+/* ══════════════════════════════════════════════════
+   AUTH — Screen management
+══════════════════════════════════════════════════ */
+function showLoginScreen() {
+  document.getElementById('login-screen').style.display     = 'flex';
+  document.getElementById('dashboard-screen').style.display = 'none';
+  document.getElementById('logout-btn').style.display       = 'none';
+}
+
+function showDashboard() {
+  document.getElementById('login-screen').style.display     = 'none';
+  document.getElementById('dashboard-screen').style.display = 'block';
+  document.getElementById('logout-btn').style.display       = 'flex';
+  setTodayDate();
+}
+
+/**
+ * ══════════════════════════════════════════════════
+ * MULTI-TENANT — Shop ID extraction
+ * Reads shop_id from user_metadata and stores it in
+ * the global variable + sessionStorage for resilience.
+ * ══════════════════════════════════════════════════
+ */
+function extractShopId(user) {
+  const shopId = user?.user_metadata?.shop_id ?? null;
+  currentShopId = shopId;
+  if (shopId) {
+    sessionStorage.setItem('faderoom_shop_id', String(shopId));
+  } else {
+    sessionStorage.removeItem('faderoom_shop_id');
+    console.warn('[FadeRoom] ⚠ No shop_id found in user_metadata. RLS will block queries.');
+  }
+  console.log('[FadeRoom] shop_id resolved →', currentShopId);
+}
+
+async function checkSession() {
+  const { data: { session } } = await db.auth.getSession();
+  hideLoading();
+  if (session) {
+    extractShopId(session.user);   // ← extract before any data fetch
+    showDashboard();
+    await loadWaitlist();
+    subscribeToRealtime();
+  } else {
+    sessionStorage.removeItem('faderoom_shop_id');
+    showLoginScreen();
+  }
+}
+
+async function handleLogin(e) {
+  if (e) e.preventDefault();
+  const email    = document.getElementById('login-email')?.value.trim();
+  const password = document.getElementById('login-password')?.value;
+  const errorEl  = document.getElementById('login-error');
+  const btn      = document.getElementById('login-btn');
+  const lbl      = document.getElementById('lbl-login-btn');
+
+  errorEl.style.display = 'none';
+  errorEl.textContent = '';
+
+  if (!email || !password) {
+    errorEl.textContent = t('err-login-empty');
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  btn.disabled = true;
+  lbl.textContent = isES ? 'Entrando…' : 'Signing in…';
+
+  const { data: signInData, error } = await db.auth.signInWithPassword({ email, password });
+
+  btn.disabled = false;
+  lbl.textContent = t('lbl-login-btn');
+
+  if (error) {
+    errorEl.textContent = error.message.includes('Invalid')
+      ? t('err-credentials') : t('err-login-generic');
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  // ── MULTI-TENANT: extract shop_id from freshly-authenticated user ──
+  extractShopId(signInData.user);
+
+  showDashboard();
+  await loadWaitlist();
+  subscribeToRealtime();
+  showToast(t('toast-welcome'));
+}
+
+async function signOut() {
+  if (realtimeSub) {
+    await db.removeChannel(realtimeSub);
+    realtimeSub = null;
+  }
+  await db.auth.signOut();
+  clientData    = [];
+  currentShopId = null;                                  // ← clear tenant context
+  sessionStorage.removeItem('faderoom_shop_id');
+  showLoginScreen();
+  showToast(t('toast-signed-out'));
+}
+
+// Covers token expiry, sign-out from another tab, etc.
+db.auth.onAuthStateChange((event, session) => {
+  if (event === 'SIGNED_OUT' || !session) {
+    if (realtimeSub) { db.removeChannel(realtimeSub); realtimeSub = null; }
+    clientData    = [];
+    currentShopId = null;                                // ← clear tenant context
+    sessionStorage.removeItem('faderoom_shop_id');
+    showLoginScreen();
+  }
+});
+
+/* ══════════════════════════════════════════════════
+   DATA — Load waitlist
+══════════════════════════════════════════════════ */
+
+/**
+ * Returns the ISO date string for a given JS Date in local timezone,
+ * e.g. "2025-06-10"
+ */
+function localDateStr(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+
+/**
+ * Load waitlist for a specific date (defaults to today).
+ * Uses created_at between start-of-day and end-of-day in local time
+ * so past days stay frozen — today's "Arrived" entries never
+ * carry over to tomorrow.
+ */
+async function loadWaitlist(dateStr) {
+  if (!dateStr) dateStr = localDateStr(new Date());
+
+  // ── MULTI-TENANT guard ──────────────────────────────────────────────
+  // Fallback: try to restore shop_id from sessionStorage if the variable
+  // was lost (e.g. hard refresh after token refresh). This is a safety
+  // net — the real source of truth is always user_metadata.
+  if (!currentShopId) {
+    currentShopId = sessionStorage.getItem('faderoom_shop_id') || null;
+  }
+
+  if (!currentShopId) {
+    console.error('[FadeRoom] ✗ loadWaitlist aborted — currentShopId is null. User metadata missing shop_id.');
+    showToast('⚠ Shop not configured. Contact your administrator.');
+    return;
+  }
+  // ───────────────────────────────────────────────────────────────────
+
+  const start = new Date(dateStr + 'T00:00:00');
+  const end   = new Date(dateStr + 'T23:59:59.999');
+
+  const { data, error } = await db
+    .from('waitlist')
+    .select('*')
+    .eq('shop_id', currentShopId)          // ← tenant filter (mirrors RLS policy)
+    .gte('created_at', start.toISOString())
+    .lte('created_at', end.toISOString())
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    console.error('[FadeRoom] Error loading waitlist:', error);
+    showToast('⚠ Error loading waitlist.');
+    return;
+  }
+
+  clientData = data || [];
+  renderList();
+}
+
+/**
+ * Update status in Supabase with optimistic UI.
+ * @param {string} id        UUID from Supabase
+ * @param {string} newStatus One of: Arrived | Complete | Cancelled | Left
+ */
+async function changeStatus(id, newStatus) {
+  // Optimistic update
+  const client = clientData.find(c => c.id === id);
+  if (client) { client.status = newStatus; renderList(); }
+
+  const { error } = await db
+    .from('waitlist')
+    .update({ status: newStatus })
+    .eq('id', id);
+
+  if (error) {
+    console.error('[FadeRoom] Error updating status:', error);
+    showToast('⚠ Could not update status. Reverting…');
+    await loadWaitlist(getSelectedDate());
+    return;
+  }
+
+  const labels = {
+    'Arrived':   t('st-arrived'),
+    'Complete':  t('st-complete'),
+    'Cancelled': t('st-cancelled'),
+    'Left':      t('st-leaved'),
+  };
+  showToast(`${t('toast-changed')} → ${labels[newStatus] || newStatus}`);
+}
+
+/* ══════════════════════════════════════════════════
+   REALTIME
+══════════════════════════════════════════════════ */
+function subscribeToRealtime() {
+  if (realtimeSub) return; // avoid duplicate channels
+
+  // ── MULTI-TENANT: scope channel name and filter to this shop ──
+  const shopFilter = currentShopId ? `shop_id=eq.${currentShopId}` : undefined;
+  const channelName = currentShopId
+    ? `waitlist-changes-${currentShopId}`
+    : 'waitlist-changes';
+
+  const pgChangesOpts = {
+    event:  '*',
+    schema: 'public',
+    table:  'waitlist',
+    ...(shopFilter && { filter: shopFilter }),   // ← only events for this shop
+  };
+
+  realtimeSub = db
+    .channel(channelName)
+    .on('postgres_changes', pgChangesOpts,
+      (payload) => {
+        const { eventType, new: newRow, old: oldRow } = payload;
+        const todayStr = localDateStr(new Date());
+
+        // Only process events for today (history views are static snapshots)
+        if (newRow && localDateStr(new Date(newRow.created_at)) !== todayStr) return;
+
+        if (eventType === 'INSERT') {
+          clientData.push(newRow);
+          renderList();
+          showToast(`🔔 ${newRow.name} ${t('toast-new-client')}`);
+
+        } else if (eventType === 'UPDATE') {
+          const idx = clientData.findIndex(c => c.id === newRow.id);
+          if (idx !== -1) clientData[idx] = newRow;
+          else clientData.push(newRow);
+          renderList();
+
+        } else if (eventType === 'DELETE') {
+          clientData = clientData.filter(c => c.id !== oldRow.id);
+          renderList();
+        }
+      }
+    )
+    .subscribe(status => {
+      if (status === 'SUBSCRIBED') console.log(`[FadeRoom] Realtime connected ✓ (shop_id: ${currentShopId})`);
+    });
+}
+
+/* ══════════════════════════════════════════════════
+   RENDER
+══════════════════════════════════════════════════ */
+function statusToCssKey(dbStatus) {
+  // DB values: 'Arrived' | 'Complete' | 'Cancelled' | 'Left'
+  // CSS classes: arrived | complete | cancelled | leaved
+  const map = {
+    arrived:   'arrived',
+    complete:  'complete',
+    cancelled: 'cancelled',
+    left:      'leaved',
+  };
+  return map[(dbStatus || '').toLowerCase()] || 'arrived';
+}
+
+function filteredClients() {
+  if (currentView === 'active')  return clientData.filter(c => c.status === 'Arrived');
+  if (currentView === 'history') return clientData.filter(c => c.status !== 'Arrived');
+  return clientData;
+}
+
+function renderList() {
+  const list  = document.getElementById('client-list');
+  const empty = document.getElementById('empty-state');
+  if (!list) return;
+
+  const clients = filteredClients();
+  const sorted  = [...clients].sort((a, b) => {
+    if (a.status === 'Arrived' && b.status !== 'Arrived') return -1;
+    if (a.status !== 'Arrived' && b.status === 'Arrived') return 1;
+    return new Date(a.created_at) - new Date(b.created_at);
+  });
+
+  if (sorted.length === 0) {
+    list.innerHTML = '';
+    if (empty) empty.style.display = 'block';
+    updateCounts();
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+
+  // Build a map: clientData sorted by created_at → daily number (1-based)
+  const allSortedByArrival = [...clientData].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+  const dailyNumMap = {};
+  allSortedByArrival.forEach((c, i) => { dailyNumMap[c.id] = i + 1; });
+
+  let queuePos = 0;
+
+  list.innerHTML = sorted.map(client => {
+    const cssStatus   = statusToCssKey(client.status);
+    const isArrived   = client.status === 'Arrived';
+    if (isArrived) queuePos++;
+    const pos       = isArrived ? queuePos : '—';
+    const timeStr   = formatTime(new Date(client.created_at));
+    const agoStr    = timeAgo(new Date(client.created_at));
+    const dailyNum  = dailyNumMap[client.id] || '?';
+
+    const statusLabelMap = {
+      arrived:   t('st-arrived'),
+      complete:  t('st-complete'),
+      cancelled: t('st-cancelled'),
+      leaved:    t('st-leaved'),
+    };
+    const statusLabel = statusLabelMap[cssStatus] || client.status;
+
+    // Barber name shown inside booking badge when available
+    const barberName  = client.barber ? escHtml(client.barber) : '';
+    const barberLabel = barberName
+      ? ` · ${barberName}`
+      : '';
+
+    const bookingBadge = client.is_reservation
+      ? `<span class="booking-badge" title="${isES ? 'Cliente con cita previa' : 'Pre-booked appointment'}">
+           <svg viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+             <rect x="1" y="2" width="10" height="9" rx="1.5" stroke="currentColor" stroke-width="1.1"/>
+             <path d="M1 5H11" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/>
+             <path d="M4 1V3M8 1V3" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/>
+             <circle cx="4.5" cy="7.5" r=".75" fill="currentColor"/>
+             <circle cx="7.5" cy="7.5" r=".75" fill="currentColor"/>
+           </svg>
+           ${t('badge-booking')}${barberLabel}
+         </span>`
+      : '';
+
+    // Barber row shown below name when is_reservation and barber field is set
+    const barberRow = (client.is_reservation && barberName)
+      ? `<div class="client-barber-row">
+           <svg viewBox="0 0 14 14" fill="none">
+             <path d="M7 1C7 1 5 3.5 5 6C5 7.66 5.9 9.05 7 9.5C8.1 9.05 9 7.66 9 6C9 3.5 7 1 7 1Z" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/>
+             <path d="M4.5 5.5L2.5 11" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/>
+             <path d="M9.5 5.5L11.5 11" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/>
+             <path d="M4 8H10" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/>
+           </svg>
+           ${isES ? 'Barbero' : 'Barber'}: <strong>${barberName}</strong>
+         </div>`
+      : '';
+
+    // Daily client number label
+    const clientNumLabel = isES
+      ? `Cliente ${dailyNum} del día`
+      : `Client ${dailyNum} today`;
+
+    return `
+    <div class="client-card" data-status="${cssStatus}" data-reservation="${client.is_reservation ? 'true' : 'false'}" id="card-${client.id}">
+
+      <div class="queue-num">${pos}</div>
+
+      <div class="client-info">
+        <div class="client-name-row">
+          <span class="client-name">${escHtml(client.name)}</span>
+          ${bookingBadge}
+        </div>
+        <div class="client-meta">
+          <span class="meta-item">
+            <svg viewBox="0 0 14 14" fill="none">
+              <path d="M3 2H5.5L6.5 5L5 6C5.67 7.36 6.64 8.33 8 9L9 7.5L12 8.5V11C12 11.55 11.55 12 11 12C5.48 12 1 7.52 1 2C1 1.45 1.45 1 2 1L3 2Z"
+                stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/>
+            </svg>
+            <span class="meta-label">${t('col-phone')}:</span>
+            ${escHtml(client.phone)}
+          </span>
+          <span class="service-pill">
+            <svg viewBox="0 0 14 14" fill="none" width="12" height="12">
+              <path d="M7 1L8.5 5H13L9.5 7.5L11 11.5L7 9L3 11.5L4.5 7.5L1 5H5.5L7 1Z"
+                stroke="var(--gold)" stroke-width="1" stroke-linejoin="round"/>
+            </svg>
+            ${escHtml(client.service)}
+          </span>
+          <span class="meta-item" style="font-size:11px;color:var(--text-muted);">
+            <svg viewBox="0 0 14 14" fill="none">
+              <circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.1"/>
+              <path d="M7 4V7L9 9" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/>
+            </svg>
+            ${t('col-registered')} ${timeStr}
+          </span>
+        </div>
+        ${barberRow}
+        <div class="client-num-row">${clientNumLabel}</div>
+      </div>
+
+      <div class="client-actions">
+        <span class="status-badge" data-s="${cssStatus}">
+          <span class="status-dot"></span>${statusLabel}
+        </span>
+
+        <!-- Status dropdown -->
+        <select class="status-select"
+                onchange="changeStatus('${client.id}', this.value)">
+          <option value="Arrived"   ${client.status==='Arrived'   ?'selected':''}>${t('st-arrived')}</option>
+          <option value="Complete"  ${client.status==='Complete'  ?'selected':''}>${t('st-complete')}</option>
+          <option value="Cancelled" ${client.status==='Cancelled' ?'selected':''}>${t('st-cancelled')}</option>
+          <option value="Left"      ${client.status==='Left'      ?'selected':''}>${t('st-leaved')}</option>
+        </select>
+
+        <!-- Quick-action chips -->
+        <div class="quick-actions">
+          ${isArrived ? `
+            <button class="qa-chip complete"
+                    onclick="changeStatus('${client.id}','Complete')">
+              ${t('act-complete')}
+            </button>
+            <button class="qa-chip cancelled"
+                    onclick="changeStatus('${client.id}','Cancelled')">
+              ${t('act-cancelled')}
+            </button>
+            <button class="qa-chip leaved"
+                    onclick="changeStatus('${client.id}','Left')">
+              ${t('act-leaved')}
+            </button>
+          ` : `
+            <button class="qa-chip arrived"
+                    onclick="changeStatus('${client.id}','Arrived')">
+              ${t('act-arrived')}
+            </button>
+          `}
+        </div>
+
+        <span class="time-ago">${agoStr}</span>
+      </div>
+
+    </div>`;
+  }).join('');
+
+  updateCounts();
+}
+
+/* ══════════════════════════════════════════════════
+   COUNTS
+══════════════════════════════════════════════════ */
+function updateCounts() {
+  const arrived  = clientData.filter(c => c.status === 'Arrived').length;
+  const complete = clientData.filter(c => c.status === 'Complete').length;
+  const history  = clientData.filter(c => c.status !== 'Arrived').length;
+  const setEl    = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  setEl('count-arrived',  arrived);
+  setEl('count-complete', complete);
+  setEl('count-total',    clientData.length);
+  setEl('badge-active',   arrived);
+  setEl('badge-history',  history);
+  setEl('badge-all',      clientData.length);
+}
+
+/* ══════════════════════════════════════════════════
+   VIEW / HISTORY NAV
+══════════════════════════════════════════════════ */
+function switchView(v) {
+  currentView = v;
+  document.querySelectorAll('.view-tab').forEach(b => b.classList.remove('active'));
+  const tab = document.getElementById('vtab-' + v);
+  if (tab) tab.classList.add('active');
+
+  // Show date picker only for history / all tabs
+  const navEl = document.getElementById('history-nav');
+  if (navEl) {
+    navEl.style.display = (v !== 'active') ? 'flex' : 'none';
+  }
+
+  renderList();
+}
+
+function getSelectedDate() {
+  const el = document.getElementById('history-date');
+  return el?.value || localDateStr(new Date());
+}
+
+async function onDateChange() {
+  const dateStr = getSelectedDate();
+  const todayStr = localDateStr(new Date());
+
+  // If the selected date is today, reload from cache (Realtime active)
+  if (dateStr === todayStr) {
+    await loadWaitlist(todayStr);
+  } else {
+    // Historical day: load from Supabase, no Realtime needed
+    await loadWaitlist(dateStr);
+  }
+}
+
+async function refreshCounts() {
+  const btn = document.getElementById('refresh-btn');
+  if (btn) btn.classList.add('spinning');
+  await loadWaitlist(getSelectedDate());
+  setTimeout(() => { if (btn) btn.classList.remove('spinning'); }, 600);
+  showToast('↺  ' + t('toast-refreshed'));
+}
+
+/* ══════════════════════════════════════════════════
+   DATE HELPERS
+══════════════════════════════════════════════════ */
+function setTodayDate() {
+  const todayStr = localDateStr(new Date());
+  const el = document.getElementById('history-date');
+  if (el) { el.value = todayStr; el.max = todayStr; }
+
+  const badge = document.getElementById('today-date');
+  if (badge) {
+    const d = new Date();
+    badge.textContent = d.toLocaleDateString(isES ? 'es-US' : 'en-US', {
+      weekday:'short', month:'short', day:'numeric'
+    });
+  }
+}
+
+function formatTime(date) {
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function timeAgo(date) {
+  const mins = Math.floor((Date.now() - date) / 60000);
+  if (mins < 1)  return isES ? 'Ahora' : 'Just now';
+  if (mins < 60) return `${mins}m ${isES ? 'hace' : 'ago'}`;
+  const hrs = Math.floor(mins / 60);
+  const rem = mins % 60;
+  return `${hrs}h ${rem}m ${isES ? 'hace' : 'ago'}`;
+}
+
+/* ══════════════════════════════════════════════════
+   TOAST
+══════════════════════════════════════════════════ */
+function showToast(msg) {
+  const el  = document.getElementById('toast');
+  const txt = document.getElementById('toast-msg');
+  if (!el || !txt) return;
+  txt.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(el._timer);
+  el._timer = setTimeout(() => el.classList.remove('show'), 3200);
+}
+
+/* ══════════════════════════════════════════════════
+   THEME & LANGUAGE
+══════════════════════════════════════════════════ */
+function toggleTheme() {
+  isDark = !isDark;
+  document.body.setAttribute('data-theme', isDark ? 'dark' : '');
+  document.getElementById('theme-icon').textContent  = isDark ? '☀' : '☽';
+  document.getElementById('theme-label').textContent = isDark ? t('theme-label-dark') : t('theme-label');
+}
+
+function toggleLang() {
+  isES = !isES;
+  applyLang();
+}
+
+function applyLang() {
+  const lang = isES ? T.es : T.en;
+  const staticIds = [
+    'db-label','lbl-live','lbl-waiting','lbl-served','lbl-total',
+    'lbl-status-arrived','lbl-status-complete','lbl-today',
+    'lbl-tab-active','lbl-tab-history','lbl-tab-all',
+    'lbl-queue-section','lbl-refresh','lbl-empty-title','lbl-empty-sub',
+    'lbl-viewing-date','lbl-logout','lbl-studio-tag',
+    'lbl-login-tag','lbl-login-sub','lbl-email','lbl-password','lbl-login-btn',
+  ];
+  staticIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (el && lang[id]) el.textContent = lang[id];
+  });
+  // innerHTML for titles with <em>
+  ['lbl-page-title','lbl-login-title'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && lang[id]) el.innerHTML = lang[id];
+  });
+  const langLbl  = document.getElementById('lang-label');
+  const themeLbl = document.getElementById('theme-label');
+  if (langLbl)  langLbl.textContent  = lang['lang-label'];
+  if (themeLbl) themeLbl.textContent = isDark ? lang['theme-label-dark'] : lang['theme-label'];
+
+  // Refresh date badge in current language
+  setTodayDate();
+  renderList();
+}
+
+/* ══════════════════════════════════════════════════
+   LOADING OVERLAY
+══════════════════════════════════════════════════ */
+function hideLoading() {
+  const ov = document.getElementById('loading-overlay');
+  if (ov) {
+    ov.classList.add('hidden');
+    setTimeout(() => ov.style.display = 'none', 500);
+  }
+}
+
+/* ══════════════════════════════════════════════════
+   SECURITY — HTML escape for user-supplied data
+══════════════════════════════════════════════════ */
+function escHtml(str) {
+  return String(str || '')
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+/* ══════════════════════════════════════════════════
+   INIT
+══════════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', () => {
+  // Wire up login form
+  const form = document.getElementById('login-form');
+  if (form) form.addEventListener('submit', handleLogin);
+
+  // Initialize date input max to today
+  const dateInput = document.getElementById('history-date');
+  if (dateInput) dateInput.max = localDateStr(new Date());
+
+  // Start: check existing session
+  checkSession();
+  applyLang();
+});
+</script>
+</body>
+</html>
