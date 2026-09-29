@@ -193,6 +193,44 @@ body{
   display:flex;gap:6px;
 }
 
+/* Forgot-password link, right-aligned under the password field */
+.forgot-link-wrap{text-align:right;margin:-6px 0 16px;}
+.forgot-link{
+  font-size:12px;color:var(--gold);text-decoration:none;
+  cursor:pointer;font-weight:500;
+}
+.forgot-link:hover{text-decoration:underline;}
+
+/* ══════════════════════════════════════════════════════
+   PASSWORD RECOVERY SCREEN — reuses login-screen/login-card
+   visual language so it feels like the same flow
+══════════════════════════════════════════════════════ */
+#recovery-screen{
+  display:none;
+  position:fixed;
+  top:var(--topbar-height);left:0;right:0;bottom:0;
+  min-height:calc(100vh - var(--topbar-height));
+  flex-direction:column;align-items:center;justify-content:center;
+  padding:32px 24px calc(32px + env(safe-area-inset-bottom,0px));
+  background:var(--cream);z-index:150;overflow-y:auto;box-sizing:border-box;
+}
+.recovery-back{
+  display:inline-block;margin-bottom:14px;font-size:12px;
+  color:var(--text-muted);cursor:pointer;
+}
+.recovery-back:hover{color:var(--gold);}
+
+/* Full-screen block for non-US visitors / hard geo-block */
+#country-block{
+  display:none;
+  position:fixed;inset:0;z-index:999;
+  background:var(--cream);color:var(--text-main);
+  flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;padding:32px;
+}
+#country-block h2{font-family:'Cormorant Garamond',serif;font-size:26px;margin-bottom:10px;}
+#country-block p{font-size:13px;color:var(--text-muted);max-width:360px;}
+
 
 /* ══════════════════════════════════════════════════════
    DASHBOARD SCREEN
@@ -619,12 +657,69 @@ body{
         <label id="lbl-password">Password</label>
         <input type="password" id="login-password" autocomplete="current-password" placeholder="••••••••" required>
       </div>
+      <div class="forgot-link-wrap">
+        <a class="forgot-link" id="lbl-forgot-link" onclick="handleForgotPassword()">Forgot your password?</a>
+      </div>
       <div id="login-error" class="login-error"></div>
       <button type="submit" class="btn-login" id="login-btn">
         <span id="lbl-login-btn">SIGN IN</span>
       </button>
     </form>
   </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     PASSWORD RECOVERY SCREEN
+══════════════════════════════════════════════════ -->
+<div id="recovery-screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <img src="assets/logo-dark.png" alt="The Fade Room" class="logo-img logo-dark">
+      <img src="assets/logo-light.png" alt="The Fade Room" class="logo-img logo-light">
+    </div>
+    <span class="login-tag" id="lbl-recovery-tag">The Fade Room</span>
+    <h2 class="login-title" id="lbl-recovery-title">Reset <em>Password</em></h2>
+    <p class="login-sub" id="lbl-recovery-sub">Enter your email and we'll send you a reset link.</p>
+    <div class="login-divider"><div class="login-divider-line"></div><div class="login-divider-dot"></div><div class="login-divider-line"></div></div>
+
+    <!-- Step 1: request the reset email -->
+    <form id="recovery-request-form" onsubmit="handleRecoveryRequest(event)">
+      <div class="form-group">
+        <label id="lbl-recovery-email">Email</label>
+        <input type="email" id="recovery-email" autocomplete="email" placeholder="barber@thefaderoom.com" required>
+      </div>
+      <div id="recovery-request-error" class="login-error"></div>
+      <button type="submit" class="btn-login" id="recovery-request-btn">
+        <span id="lbl-recovery-request-btn">SEND RESET LINK</span>
+      </button>
+    </form>
+
+    <!-- Step 2: shown after clicking the emailed link (Supabase recovery session) -->
+    <form id="recovery-update-form" style="display:none;" onsubmit="handleUpdatePassword(event)">
+      <div class="form-group">
+        <label id="lbl-new-password">New password</label>
+        <input type="password" id="new-password" autocomplete="new-password" placeholder="••••••••" required minlength="8">
+      </div>
+      <div class="form-group">
+        <label id="lbl-confirm-password">Confirm new password</label>
+        <input type="password" id="confirm-password" autocomplete="new-password" placeholder="••••••••" required minlength="8">
+      </div>
+      <div id="recovery-update-error" class="login-error"></div>
+      <button type="submit" class="btn-login" id="recovery-update-btn">
+        <span id="lbl-recovery-update-btn">UPDATE PASSWORD</span>
+      </button>
+    </form>
+
+    <span class="recovery-back" id="lbl-recovery-back" onclick="showLoginScreen()">← Back to sign in</span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     COUNTRY BLOCK — shown if the visitor isn't in the US
+══════════════════════════════════════════════════ -->
+<div id="country-block">
+  <h2 id="lbl-country-blocked-title">Access restricted</h2>
+  <p id="lbl-country-blocked-sub">This dashboard is only available from the United States.</p>
 </div>
 
 <!-- ══════════════════════════════════════════════════
@@ -735,6 +830,86 @@ const { createClient } = supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_ANON);
 
 /* ══════════════════════════════════════════════════
+   SECURITY — shared config
+══════════════════════════════════════════════════ */
+
+// Any error, from any cause (wrong email, wrong password, too many
+// attempts, suspicious email), always shows this exact text. Never
+// reveal *why* a login/reset attempt failed — it helps attackers
+// enumerate valid accounts.
+function genericAuthError() {
+  return t('err-credentials');
+}
+
+// Small, extendable blocklist of disposable/throwaway email domains.
+// Extend this array as needed (or swap in a bigger public list, e.g.
+// https://github.com/disposable-email-domains/disposable-email-domains).
+const DISPOSABLE_EMAIL_DOMAINS = [
+  'mailinator.com','tempmail.com','temp-mail.org','guerrillamail.com',
+  '10minutemail.com','yopmail.com','trashmail.com','fakeinbox.com',
+  'getnada.com','sharklasers.com','dispostable.com','throwawaymail.com',
+];
+
+function isSuspiciousEmail(email) {
+  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!email || !re.test(email)) return true;
+  const domain = email.split('@')[1].toLowerCase().trim();
+  return DISPOSABLE_EMAIL_DOMAINS.includes(domain);
+}
+
+/* ══════════════════════════════════════════════════
+   SECURITY — 3-attempt lockout (backed by Supabase)
+   Requires the SQL in login_attempts.sql to be run once
+   in the Supabase SQL editor (RPCs: check_login_allowed,
+   register_failed_attempt, reset_login_attempts).
+══════════════════════════════════════════════════ */
+async function isLoginLocked(email) {
+  const { data, error } = await db.rpc('check_login_allowed', { p_email: email });
+  if (error) {
+    console.warn('[FadeRoom] check_login_allowed RPC failed, failing open:', error.message);
+    return false; // never hard-lock users out because of a network/RPC hiccup
+  }
+  return data === false; // RPC returns true when the login is still allowed
+}
+
+async function registerFailedAttempt(email) {
+  const { error } = await db.rpc('register_failed_attempt', { p_email: email });
+  if (error) console.warn('[FadeRoom] register_failed_attempt RPC failed:', error.message);
+}
+
+async function resetLoginAttempts(email) {
+  const { error } = await db.rpc('reset_login_attempts', { p_email: email });
+  if (error) console.warn('[FadeRoom] reset_login_attempts RPC failed:', error.message);
+}
+
+/* ══════════════════════════════════════════════════
+   SECURITY — US-only access (defense in depth)
+   The authoritative block should live at the edge (Cloudflare
+   Firewall Rule: Country != US → Block). This client-side check
+   is a second layer only, since a client can always be spoofed.
+══════════════════════════════════════════════════ */
+async function enforceUSOnlyAccess() {
+  try {
+    const res  = await fetch('https://ipapi.co/json/');
+    const geo  = await res.json();
+    if (geo && geo.country_code && geo.country_code !== 'US') {
+      document.getElementById('country-block').style.display = 'flex';
+      document.getElementById('login-screen').style.display   = 'none';
+      document.getElementById('recovery-screen').style.display = 'none';
+      document.getElementById('dashboard-screen').style.display = 'none';
+      hideLoading();
+      return false;
+    }
+    return true;
+  } catch (e) {
+    // If the geo lookup itself fails, don't lock legitimate US users out —
+    // rely on the edge-level (Cloudflare) rule as the real gate.
+    console.warn('[FadeRoom] Geo check failed, relying on edge-level blocking:', e);
+    return true;
+  }
+}
+
+/* ══════════════════════════════════════════════════
    GLOBAL STATE
 ══════════════════════════════════════════════════ */
 let isDark        = false;
@@ -793,9 +968,24 @@ const T = {
     'lang-label':          'ES',
     'theme-label':         'Dark',
     'theme-label-dark':    'Light',
-    'err-credentials':     'Incorrect email or password.',
-    'err-login-generic':   'Login failed. Please try again.',
+    'err-credentials':     'Incorrect email and/or password. Please check and try again.',
+    'err-login-generic':   'Incorrect email and/or password. Please check and try again.',
     'err-login-empty':     'Please enter your email and password.',
+    'lbl-forgot-link':     'Forgot your password?',
+    'lbl-recovery-tag':    'The Fade Room',
+    'lbl-recovery-title':  'Reset <em>Password</em>',
+    'lbl-recovery-sub':    "Enter your email and we'll send you a reset link.",
+    'lbl-recovery-email':  'Email',
+    'lbl-recovery-request-btn': 'SEND RESET LINK',
+    'lbl-new-password':    'New password',
+    'lbl-confirm-password':'Confirm new password',
+    'lbl-recovery-update-btn': 'UPDATE PASSWORD',
+    'lbl-recovery-back':   '← Back to sign in',
+    'lbl-country-blocked-title': 'Access restricted',
+    'lbl-country-blocked-sub': 'This dashboard is only available from the United States.',
+    'toast-recovery-sent': 'If that email exists, a reset link is on its way.',
+    'toast-password-updated': '✓ Password updated. You can sign in now.',
+    'err-recovery-mismatch': 'Passwords do not match.',
   },
   es: {
     'db-label':            'Panel',
@@ -842,9 +1032,24 @@ const T = {
     'lang-label':          'EN',
     'theme-label':         'Oscuro',
     'theme-label-dark':    'Claro',
-    'err-credentials':     'Correo o contraseña incorrectos.',
-    'err-login-generic':   'Error al iniciar sesión. Intenta de nuevo.',
+    'err-credentials':     'Correo y/o contraseña incorrectos. Compruebe e intente de nuevo.',
+    'err-login-generic':   'Correo y/o contraseña incorrectos. Compruebe e intente de nuevo.',
     'err-login-empty':     'Por favor ingresa tu correo y contraseña.',
+    'lbl-forgot-link':     '¿Olvidaste tu contraseña?',
+    'lbl-recovery-tag':    'The Fade Room',
+    'lbl-recovery-title':  'Recuperar <em>Contraseña</em>',
+    'lbl-recovery-sub':    'Ingresa tu correo y te enviaremos un enlace de recuperación.',
+    'lbl-recovery-email':  'Correo Electrónico',
+    'lbl-recovery-request-btn': 'ENVIAR ENLACE',
+    'lbl-new-password':    'Nueva contraseña',
+    'lbl-confirm-password':'Confirmar nueva contraseña',
+    'lbl-recovery-update-btn': 'ACTUALIZAR CONTRASEÑA',
+    'lbl-recovery-back':   '← Volver a iniciar sesión',
+    'lbl-country-blocked-title': 'Acceso restringido',
+    'lbl-country-blocked-sub': 'Este panel solo está disponible desde Estados Unidos.',
+    'toast-recovery-sent': 'Si ese correo existe, el enlace va en camino.',
+    'toast-password-updated': '✓ Contraseña actualizada. Ya puedes iniciar sesión.',
+    'err-recovery-mismatch': 'Las contraseñas no coinciden.',
   }
 };
 function t(k){ return (isES ? T.es : T.en)[k] || k; }
@@ -854,12 +1059,14 @@ function t(k){ return (isES ? T.es : T.en)[k] || k; }
 ══════════════════════════════════════════════════ */
 function showLoginScreen() {
   document.getElementById('login-screen').style.display     = 'flex';
+  document.getElementById('recovery-screen').style.display  = 'none';
   document.getElementById('dashboard-screen').style.display = 'none';
   document.getElementById('logout-btn').style.display       = 'none';
 }
 
 function showDashboard() {
   document.getElementById('login-screen').style.display     = 'none';
+  document.getElementById('recovery-screen').style.display  = 'none';
   document.getElementById('dashboard-screen').style.display = 'block';
   document.getElementById('logout-btn').style.display       = 'flex';
   setTodayDate();
@@ -915,6 +1122,20 @@ async function handleLogin(e) {
     return;
   }
 
+  // ── Block obviously fake / disposable emails before ever hitting Supabase ──
+  if (isSuspiciousEmail(email)) {
+    errorEl.textContent = genericAuthError();
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  // ── 3-attempt lockout check ──
+  if (await isLoginLocked(email)) {
+    errorEl.textContent = genericAuthError();
+    errorEl.style.display = 'block';
+    return;
+  }
+
   btn.disabled = true;
   lbl.textContent = isES ? 'Entrando…' : 'Signing in…';
 
@@ -924,11 +1145,16 @@ async function handleLogin(e) {
   lbl.textContent = t('lbl-login-btn');
 
   if (error) {
-    errorEl.textContent = error.message.includes('Invalid')
-      ? t('err-credentials') : t('err-login-generic');
+    await registerFailedAttempt(email);
+    // Same message no matter what went wrong (wrong email, wrong
+    // password, locked, disposable email) — never help an attacker
+    // figure out which part of the credentials was wrong.
+    errorEl.textContent = genericAuthError();
     errorEl.style.display = 'block';
     return;
   }
+
+  await resetLoginAttempts(email);
 
   // ── MULTI-TENANT: extract shop_id from freshly-authenticated user ──
   extractShopId(signInData.user);
@@ -961,7 +1187,114 @@ db.auth.onAuthStateChange((event, session) => {
     sessionStorage.removeItem('faderoom_shop_id');
     showLoginScreen();
   }
+  // Fired when the user lands back on the page after clicking the
+  // "reset password" link in their email (Supabase parses the
+  // recovery token from the URL hash automatically).
+  if (event === 'PASSWORD_RECOVERY') {
+    showRecoveryScreen('update');
+  }
 });
+
+/* ══════════════════════════════════════════════════
+   AUTH — Password recovery ("forgot password" flow)
+══════════════════════════════════════════════════ */
+function showRecoveryScreen(step) {
+  document.getElementById('login-screen').style.display     = 'none';
+  document.getElementById('dashboard-screen').style.display = 'none';
+  document.getElementById('recovery-screen').style.display  = 'flex';
+
+  const requestForm = document.getElementById('recovery-request-form');
+  const updateForm  = document.getElementById('recovery-update-form');
+  if (step === 'update') {
+    requestForm.style.display = 'none';
+    updateForm.style.display  = 'block';
+  } else {
+    requestForm.style.display = 'block';
+    updateForm.style.display  = 'none';
+  }
+}
+
+function handleForgotPassword() {
+  // Pre-fill with whatever the user already typed on the login screen
+  const typedEmail = document.getElementById('login-email')?.value.trim();
+  if (typedEmail) document.getElementById('recovery-email').value = typedEmail;
+  showRecoveryScreen('request');
+}
+
+async function handleRecoveryRequest(e) {
+  if (e) e.preventDefault();
+  const email   = document.getElementById('recovery-email')?.value.trim();
+  const errorEl = document.getElementById('recovery-request-error');
+  const btn     = document.getElementById('recovery-request-btn');
+
+  errorEl.style.display = 'none';
+  errorEl.textContent = '';
+
+  if (!email) {
+    errorEl.textContent = t('err-login-empty');
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  if (isSuspiciousEmail(email)) {
+    // Same generic message — don't confirm/deny whether the email is valid.
+    showToast(t('toast-recovery-sent'));
+    return;
+  }
+
+  btn.disabled = true;
+
+  // redirectTo points back at this same page; Supabase appends the
+  // recovery tokens to the URL hash and the SDK auto-detects them,
+  // firing the PASSWORD_RECOVERY event above.
+  const { error } = await db.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin + window.location.pathname,
+  });
+
+  btn.disabled = false;
+
+  // Always show the same success toast whether or not the email exists —
+  // this prevents attackers from using "forgot password" to enumerate
+  // valid accounts.
+  showToast(t('toast-recovery-sent'));
+  if (error) console.warn('[FadeRoom] resetPasswordForEmail:', error.message);
+}
+
+async function handleUpdatePassword(e) {
+  if (e) e.preventDefault();
+  const pass1   = document.getElementById('new-password')?.value;
+  const pass2   = document.getElementById('confirm-password')?.value;
+  const errorEl = document.getElementById('recovery-update-error');
+  const btn     = document.getElementById('recovery-update-btn');
+
+  errorEl.style.display = 'none';
+  errorEl.textContent = '';
+
+  if (!pass1 || !pass2) {
+    errorEl.textContent = t('err-login-empty');
+    errorEl.style.display = 'block';
+    return;
+  }
+  if (pass1 !== pass2) {
+    errorEl.textContent = t('err-recovery-mismatch');
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  btn.disabled = true;
+  const { error } = await db.auth.updateUser({ password: pass1 });
+  btn.disabled = false;
+
+  if (error) {
+    errorEl.textContent = genericAuthError();
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  showToast(t('toast-password-updated'));
+  await db.auth.signOut();
+  showLoginScreen();
+}
 
 /* ══════════════════════════════════════════════════
    DATA — Load waitlist
@@ -1418,13 +1751,17 @@ function applyLang() {
     'lbl-queue-section','lbl-refresh','lbl-empty-title','lbl-empty-sub',
     'lbl-viewing-date','lbl-logout','lbl-studio-tag',
     'lbl-login-tag','lbl-login-sub','lbl-email','lbl-password','lbl-login-btn',
+    'lbl-forgot-link','lbl-recovery-tag','lbl-recovery-sub','lbl-recovery-email',
+    'lbl-recovery-request-btn','lbl-new-password','lbl-confirm-password',
+    'lbl-recovery-update-btn','lbl-recovery-back','lbl-country-blocked-title',
+    'lbl-country-blocked-sub',
   ];
   staticIds.forEach(id => {
     const el = document.getElementById(id);
     if (el && lang[id]) el.textContent = lang[id];
   });
   // innerHTML for titles with <em>
-  ['lbl-page-title','lbl-login-title'].forEach(id => {
+  ['lbl-page-title','lbl-login-title','lbl-recovery-title'].forEach(id => {
     const el = document.getElementById(id);
     if (el && lang[id]) el.innerHTML = lang[id];
   });
@@ -1472,8 +1809,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const dateInput = document.getElementById('history-date');
   if (dateInput) dateInput.max = localDateStr(new Date());
 
-  // Start: check existing session
-  checkSession();
+  // Start: enforce US-only access, then check existing session
+  (async () => {
+    const allowed = await enforceUSOnlyAccess();
+    if (!allowed) return; // country-block overlay is already shown
+    checkSession();
+  })();
   applyLang();
 });
 </script>
